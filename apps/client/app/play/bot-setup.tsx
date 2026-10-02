@@ -8,6 +8,13 @@ import { Button } from '../../src/components/Button';
 import { Screen } from '../../src/components/Screen';
 import { Segmented } from '../../src/components/Segmented';
 import { useGame } from '../../src/features/game/game-store';
+import { OpeningPicker } from '../../src/features/openings/OpeningPicker';
+import {
+  DEFAULT_SELECTION,
+  resolveOpening,
+  type OpeningSelection,
+} from '../../src/features/openings/picker-model';
+import { getOpeningIndex } from '@chess/openings';
 import { colors, spacing, typography } from '../../src/theme/tokens';
 
 type ColorChoice = 'w' | 'b' | 'random';
@@ -17,6 +24,7 @@ export default function BotSetup() {
   const [color, setColor] = useState<ColorChoice>('w');
   const [rating, setRating] = useState('1200');
   const [tc, setTc] = useState('none');
+  const [opening, setOpening] = useState<OpeningSelection>(DEFAULT_SELECTION);
 
   const start = () => {
     const humanColor: Color = color === 'random' ? (Math.random() < 0.5 ? 'w' : 'b') : color;
@@ -25,6 +33,7 @@ export default function BotSetup() {
       clock: getTimeControl(tc).config,
       humanColor,
       botRating: Number(rating),
+      opening: resolveOpening(getOpeningIndex(), opening, Math.random),
     });
     router.push('/play/game');
   };
@@ -55,6 +64,9 @@ export default function BotSetup() {
           Strength levels are tuning profiles, not official ratings. Lower levels make human-like
           mistakes.
         </Text>
+      </Section>
+      <Section label="Opening">
+        <OpeningPicker value={opening} onChange={setOpening} />
       </Section>
       <Section label="Time control">
         <Segmented

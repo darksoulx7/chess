@@ -1,0 +1,22 @@
+{
+  "name": "@chess/openings",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build:data": "tsx scripts/build-data.ts",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@chess/chess-core": "workspace:*",
+    "@chess/engine": "workspace:*"
+  },
+  "devDependencies": {
+    "@chess/config": "workspace:*",
+    "@types/node": "^26.6.4",
+    "tsx": "^4.23.15"
+  }
+}

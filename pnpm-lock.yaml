@@ -47,6 +47,9 @@ importers:
       '@chess/game-types':
         specifier: workspace:*
         version: link:../../packages/game-types
+      '@chess/openings':
+        specifier: workspace:*
+        version: link:../../packages/openings
       '@expo/metro-runtime':
         specifier: ~57.0.16
         version: 57.0.16(@expo/log-box@57.0.4)(expo@57.0.26)(react-dom@19.2.3(react@19.2.3))(react-native@0.86.3(@babel/core@7.29.7)(@react-native/metro-config@0.86.3(@babel/core@7.29.7))(@types/react@19.3.0)(react@19.2.3))(react@19.2.3)
@@ -129,6 +132,9 @@ importers:
       '@chess/engine':
         specifier: workspace:*
         version: link:../../packages/engine
+      '@chess/openings':
+        specifier: workspace:*
+        version: link:../../packages/openings
       '@fastify/cors':
         specifier: ^11.3.0
         version: 11.3.0
@@ -204,6 +210,25 @@ importers:
       '@chess/config':
         specifier: workspace:*
         version: link:../config
+
+  packages/openings:
+    dependencies:
+      '@chess/chess-core':
+        specifier: workspace:*
+        version: link:../chess-core
+      '@chess/engine':
+        specifier: workspace:*
+        version: link:../engine
+    devDependencies:
+      '@chess/config':
+        specifier: workspace:*
+        version: link:../config
+      '@types/node':
+        specifier: ^26.6.4
+        version: 26.6.4
+      tsx:
+        specifier: ^4.23.15
+        version: 4.23.15
 
 packages:
 

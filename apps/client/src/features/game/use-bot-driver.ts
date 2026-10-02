@@ -14,6 +14,7 @@ export function useBotDriver(fen: string, turn: 'w' | 'b', isOver: boolean): voi
   const mode = useGame((s) => s.mode);
   const humanColor = useGame((s) => s.humanColor);
   const rating = useGame((s) => s.botRating);
+  const opening = useGame((s) => s.opening);
   const gameSeed = useGame((s) => s.gameSeed);
   const retry = useGame((s) => s.botRetry);
   const hasClockFlagged = useGame((s) => s.override !== null);
@@ -31,7 +32,19 @@ export function useBotDriver(fen: string, turn: 'w' | 'b', isOver: boolean): voi
 
     void (async () => {
       try {
-        const reply = await requestBotMove({ fen, targetRating: rating, seed }, controller.signal);
+        const game = useGame.getState().game;
+        const moves = game.getHistory().map((m) => m.lan);
+        // Only send the opening while the book can still apply; afterwards the engine plays alone.
+        const book = opening && moves.length < opening.maxMoves * 2;
+        const reply = await requestBotMove(
+          {
+            fen,
+            targetRating: rating,
+            seed,
+            ...(book ? { moves, opening: { id: opening.id, maxMoves: opening.maxMoves } } : {}),
+          },
+          controller.signal,
+        );
         const wait = MIN_THINK_MS - (Date.now() - started);
         if (wait > 0) await new Promise((r) => setTimeout(r, wait));
         if (controller.signal.aborted) return;
@@ -46,5 +59,5 @@ export function useBotDriver(fen: string, turn: 'w' | 'b', isOver: boolean): voi
     })();
 
     return () => controller.abort();
-  }, [mode, isOver, hasClockFlagged, rating, turn, humanColor, fen, gameSeed, retry]);
+  }, [mode, isOver, hasClockFlagged, rating, opening, turn, humanColor, fen, gameSeed, retry]);
 }

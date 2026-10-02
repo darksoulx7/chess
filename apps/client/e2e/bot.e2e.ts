@@ -70,7 +70,16 @@ async function waitForPlies(n: number, timeout = 20_000) {
 }
 const history = async () => (await page.locator('[data-testid="move-list"]').innerText()).trim();
 
-async function startBot(opts: { color?: 'White' | 'Black'; rating?: string; clock?: string } = {}) {
+interface OpeningOpts {
+  family: string;
+  /** Variation row label, or 'Random variation'; omit for the whole family. */
+  variation?: string;
+  depth?: string;
+}
+
+async function startBot(
+  opts: { color?: 'White' | 'Black'; rating?: string; clock?: string; opening?: OpeningOpts } = {},
+) {
   humanBlack = opts.color === 'Black';
   await page.goto(BASE);
   await page.getByRole('button', { name: 'Play', exact: true }).click();
@@ -78,6 +87,16 @@ async function startBot(opts: { color?: 'White' | 'Black'; rating?: string; cloc
   if (opts.color) await page.getByRole('radio', { name: opts.color, exact: true }).click();
   if (opts.rating) await page.getByRole('radio', { name: opts.rating, exact: true }).click();
   if (opts.clock) await page.getByRole('radio', { name: opts.clock, exact: true }).click();
+  if (opts.opening) {
+    await page.getByRole('radio', { name: 'Choose opening', exact: true }).click();
+    await page.getByRole('radio', { name: opts.opening.family, exact: true }).click();
+    if (opts.opening.variation) {
+      await page.getByRole('radio', { name: opts.opening.variation, exact: true }).click();
+    }
+    if (opts.opening.depth) {
+      await page.getByRole('radio', { name: opts.opening.depth, exact: true }).last().click();
+    }
+  }
   await page.getByRole('button', { name: 'Start game' }).click();
   await page.waitForSelector('[data-testid="board"]');
 }
@@ -177,5 +196,89 @@ describe('bot games (real server + Stockfish)', () => {
     await page.getByRole('button', { name: 'New game' }).first().click();
     await page.waitForTimeout(2500);
     expect(await fen()).toContain('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w');
+  });
+});
+
+const openingName = async () =>
+  (await page.locator('[data-testid="opening-name"]').innerText()).trim();
+const sanOf = async () => (await history()).replace(/\s+/g, ' ');
+
+describe('openings (real server + Stockfish)', () => {
+  it('Bot 1600, Italian Game, Giuoco Piano: the bot follows the line as Black', async () => {
+    await startBot({
+      rating: '1600',
+      opening: { family: 'Italian Game', variation: 'Giuoco Piano', depth: '10' },
+    });
+    expect(await page.getByTestId('opening-line').innerText()).toContain(
+      '1.e4 e5 2.Nf3 Nc6 3.Bc4 Bc5',
+    );
+    for (const [from, to, plyAfter] of [
+      ['e2', 'e4', 2],
+      ['g1', 'f3', 4],
+      ['f1', 'c4', 6],
+    ] as const) {
+      await click(from);
+      await click(to);
+      await waitForPlies(plyAfter);
+    }
+    expect(await sanOf()).toContain('1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5');
+    await page.waitForFunction(
+      () =>
+        document
+          .querySelector('[data-testid="opening-name"]')
+          ?.textContent?.includes('Giuoco Piano') ?? false,
+    );
+    expect(await openingName()).toContain('Italian Game: Giuoco Piano');
+  }, 120_000);
+
+  it('as White the bot opens with the book move for a Black-side opening', async () => {
+    await startBot({
+      color: 'Black',
+      rating: '800',
+      opening: { family: 'Sicilian Defense', variation: 'Random variation' },
+    });
+    await waitForPlies(1);
+    expect(await sanOf()).toContain('1. e4');
+    // the Sicilian is Black's reply: play 1...c5 and the bot continues from the book
+    await click('c7');
+    await click('c5');
+    await waitForPlies(3);
+    expect(await openingName()).toMatch(/Sicilian/);
+  }, 120_000);
+
+  it('adapts when the human leaves the line: the bot still replies with a legal move', async () => {
+    await startBot({
+      rating: '1200',
+      opening: { family: 'Italian Game', variation: 'Giuoco Piano' },
+    });
+    await click('d2');
+    await click('d4'); // 1.d4 is not in the Italian subtree
+    await waitForPlies(2);
+    const g = ChessGame.fromFen(await fen());
+    expect(g.ok).toBe(true);
+    expect(await sanOf()).toContain('1. d4');
+  }, 60_000);
+
+  it('a family with no variation chosen offers the whole family and shows the bot plan', async () => {
+    await startBot({
+      color: 'Black',
+      rating: '1000',
+      opening: { family: 'Ruy Lopez' },
+    });
+    await waitForPlies(1);
+    expect(await sanOf()).toContain('1. e4');
+  }, 60_000);
+
+  it('search finds any opening and selects it', async () => {
+    await page.goto(BASE);
+    await page.getByRole('button', { name: 'Play', exact: true }).click();
+    await page.getByRole('button', { name: 'Play vs Bot' }).click();
+    await page.getByRole('radio', { name: 'Choose opening', exact: true }).click();
+    await page.getByLabel('Search openings').fill('najdorf');
+    await page
+      .getByRole('radio', { name: /Sicilian Defense: Najdorf Variation/ })
+      .first()
+      .click();
+    expect(await page.getByTestId('opening-line').innerText()).toContain('Najdorf');
   });
 });

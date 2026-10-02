@@ -11,6 +11,7 @@ COPY packages/config/package.json packages/config/
 COPY packages/chess-core/package.json packages/chess-core/
 COPY packages/game-types/package.json packages/game-types/
 COPY packages/engine/package.json packages/engine/
+COPY packages/openings/package.json packages/openings/
 RUN pnpm install --frozen-lockfile --filter @chess/server...
 COPY packages packages
 COPY apps/server apps/server

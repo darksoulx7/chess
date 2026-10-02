@@ -1,4 +1,5 @@
 import { ChessGame } from '@chess/chess-core';
+import { createOpeningBook, getOpeningIndex } from '@chess/openings';
 import {
   EngineError,
   MAX_BOT_RATING,
@@ -14,7 +15,22 @@ const bodySchema = z.object({
   fen: z.string().min(1).max(100),
   targetRating: z.number().int().min(MIN_BOT_RATING).max(MAX_BOT_RATING),
   seed: z.number().int().min(0).max(0xffffffff).optional(),
+  /** Moves played so far (UCI). Required with `opening` so the book knows the game so far. */
+  moves: z
+    .array(z.string().regex(/^[a-h][1-8][a-h][1-8][qrbn]?$/))
+    .max(600)
+    .optional(),
+  opening: z
+    .object({ id: z.string().min(1).max(200), maxMoves: z.number().int().min(0).max(30) })
+    .optional(),
 });
+
+/** Replays `moves` from the start and returns them only if they lead exactly to `fen`. */
+function validateHistory(moves: readonly string[], fen: string): boolean {
+  const game = ChessGame.create();
+  for (const m of moves) if (!game.makeMoveUci(m).ok) return false;
+  return game.getFen() === fen;
+}
 
 export interface BotRouteDeps {
   engine: EngineService;
@@ -47,7 +63,23 @@ export function registerBotRoutes(app: FastifyInstance, deps: BotRouteDeps): voi
           .code(400)
           .send({ error: 'invalid_request', issues: parsed.error.issues.map((i) => i.message) });
       }
-      const { fen, targetRating, seed } = parsed.data;
+      const { fen, targetRating, seed, moves, opening } = parsed.data;
+
+      let book;
+      if (opening) {
+        const index = getOpeningIndex();
+        if (!index.get(opening.id)) return reply.code(400).send({ error: 'unknown_opening' });
+        if (!moves || !validateHistory(moves, fen)) {
+          return reply
+            .code(400)
+            .send({ error: 'invalid_request', issues: ['moves must lead to fen'] });
+        }
+        book = createOpeningBook(index, {
+          openingId: opening.id,
+          maxMoves: opening.maxMoves,
+          history: moves,
+        });
+      }
 
       // Cancel the search if the client disconnects before we answer (e.g. the user starts a new game).
       // Watch the *response*: `req.raw` emits 'close' as soon as the body is read (Node >= 16), which
@@ -65,6 +97,7 @@ export function registerBotRoutes(app: FastifyInstance, deps: BotRouteDeps): voi
           profile: buildBotProfile(targetRating),
           engine: deps.engine,
           signal: abort.signal,
+          ...(book ? { book } : {}),
           ...(seed !== undefined ? { seed } : {}),
         });
         const loaded = ChessGame.fromFen(fen);

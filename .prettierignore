@@ -3,3 +3,4 @@ dist
 .expo
 coverage
 pnpm-lock.yaml
+packages/openings/data

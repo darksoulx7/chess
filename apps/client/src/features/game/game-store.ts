@@ -33,6 +33,8 @@ export interface GameConfig {
   humanColor?: Color;
   /** BOT only: bot strength label (not an Elo). */
   botRating?: number;
+  /** BOT only: opening repertoire the bot follows (depth in full moves). */
+  opening?: { id: string; name: string; maxMoves: number } | null;
 }
 
 export type BotStatus = 'idle' | 'thinking' | 'error';
@@ -45,6 +47,7 @@ interface GameState {
   orientation: Color;
   humanColor: Color;
   botRating: number | null;
+  opening: { id: string; name: string; maxMoves: number } | null;
   /** Salt so each game gets different (but reproducible-per-game) bot randomness. */
   gameSeed: number;
   botStatus: BotStatus;
@@ -77,6 +80,7 @@ export const useGame = create<GameState>((set, get) => ({
   orientation: 'w',
   humanColor: 'w',
   botRating: null,
+  opening: null,
   gameSeed: 0,
   botStatus: 'idle',
   botError: null,
@@ -95,6 +99,7 @@ export const useGame = create<GameState>((set, get) => ({
         orientation: config.mode === 'BOT' ? humanColor : 'w',
         humanColor,
         botRating: config.mode === 'BOT' ? (config.botRating ?? 1200) : null,
+        opening: config.mode === 'BOT' ? (config.opening ?? null) : null,
         gameSeed: Math.floor(Math.random() * 0xffffffff),
         botStatus: 'idle',
         botError: null,

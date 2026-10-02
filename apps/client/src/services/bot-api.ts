@@ -31,7 +31,14 @@ export const BOT_ERROR_TEXT: Record<BotErrorCode, string> = {
 
 /** Asks the server for the bot's move. Rejects with BotApiError; an aborted request rejects with an AbortError. */
 export async function requestBotMove(
-  params: { fen: string; targetRating: number; seed?: number },
+  params: {
+    fen: string;
+    targetRating: number;
+    seed?: number;
+    /** UCI moves played so far; required together with `opening`. */
+    moves?: string[];
+    opening?: { id: string; maxMoves: number };
+  },
   signal?: AbortSignal,
   fetchImpl: typeof fetch = fetch,
 ): Promise<BotMoveResponse> {

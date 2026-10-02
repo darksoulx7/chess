@@ -1,6 +1,6 @@
 import type { MoveInput, Square } from '@chess/chess-core';
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AccessibilityInfo, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Button } from '../../components/Button';
 import { Screen } from '../../components/Screen';
@@ -14,6 +14,7 @@ import { MoveList } from './MoveList';
 import { PlayerBar } from './PlayerBar';
 import { GameOverSheet } from './GameOverSheet';
 import { materialAdvantage, summarizeCaptures } from './captured';
+import { getOpeningIndex, identifyOpening } from '@chess/openings';
 import { useGame, useGameView } from './game-store';
 import { useBotDriver } from './use-bot-driver';
 import { soundFor } from './sound-events';
@@ -37,6 +38,7 @@ export function GameScreen() {
   const botRating = useGame((s) => s.botRating);
   const botStatus = useGame((s) => s.botStatus);
   const botError = useGame((s) => s.botError);
+  const plannedOpening = useGame((s) => s.opening);
   const settings = useSettings();
   const [reduceMotion, setReduceMotion] = useState(false);
   const [confirm, setConfirm] = useState<'resign' | 'draw' | null>(null);
@@ -82,6 +84,14 @@ export function GameScreen() {
   );
 
   const captures = summarizeCaptures(view.history);
+  const identified = useMemo(
+    () =>
+      identifyOpening(
+        getOpeningIndex(),
+        view.history.map((m) => m.lan),
+      ),
+    [view.history],
+  );
   const pieceTheme = getPieceTheme(settings.pieceThemeId);
   const top = orientation === 'w' ? 'b' : 'w';
   const bottom = orientation;
@@ -175,6 +185,13 @@ export function GameScreen() {
               )}
             </View>
           ) : null}
+          {identified || plannedOpening ? (
+            <Text style={styles.opening} testID="opening-name">
+              {identified
+                ? `${identified.opening.eco} · ${identified.opening.name}`
+                : `Bot plays: ${plannedOpening?.name}`}
+            </Text>
+          ) : null}
           <View style={styles.moves}>
             <MoveList history={view.history} />
           </View>
@@ -264,6 +281,7 @@ const styles = StyleSheet.create({
   },
   controls: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   fen: { color: colors.textFaint, ...typography.caption },
+  opening: { color: colors.textMuted, ...typography.label },
   botRow: { gap: spacing.sm },
   botText: { color: colors.textMuted, ...typography.body },
   botError: { color: colors.danger },

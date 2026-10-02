@@ -138,3 +138,110 @@ describe.skipIf(!hasStockfish)('POST /api/bot/move with real Stockfish', () => {
     await pool.dispose();
   }, 60_000);
 });
+
+describe('POST /api/bot/move with an opening', () => {
+  /** Engine that must not be consulted while the book still has an answer. */
+  const forbiddenEngine: EngineService = {
+    analyze: async () => {
+      throw new Error('engine should not be called for a book move');
+    },
+    dispose: async () => {},
+  };
+  const game = (...ucis: string[]) => {
+    const g = ChessGame.create();
+    for (const u of ucis) if (!g.makeMoveUci(u).ok) throw new Error(`illegal ${u}`);
+    return { fen: g.getFen(), moves: ucis };
+  };
+  const GIUOCO = { id: 'italian-game-giuoco-piano', maxMoves: 10 };
+
+  it('plays book moves along the selected line without calling the engine', async () => {
+    const app = await appWith(forbiddenEngine);
+    const expected = [
+      [[], 'e2e4'],
+      [['e2e4', 'e7e5'], 'g1f3'],
+      [['e2e4', 'e7e5', 'g1f3', 'b8c6'], 'f1c4'],
+    ] as const;
+    for (const [played, move] of expected) {
+      const res = await post(app, {
+        ...game(...played),
+        targetRating: 1600,
+        seed: 1,
+        opening: GIUOCO,
+      });
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toMatchObject({ move, quality: 'book' });
+    }
+  });
+
+  it('falls back to the engine when the opponent leaves the line or the depth is reached', async () => {
+    const app = await appWith(cannedEngine('d7d5'));
+    // 1.d4: not in the Italian subtree
+    const off = await post(app, { ...game('d2d4'), targetRating: 1600, opening: GIUOCO });
+    expect(off.json()).toMatchObject({ move: 'd7d5' });
+    expect((off.json() as { quality: string }).quality).not.toBe('book');
+    // depth 0: the book is disabled from the first move, so the (legal) engine move is played
+    const white = await appWith(cannedEngine('g1f3'));
+    const zero = await post(white, {
+      ...game(),
+      targetRating: 1600,
+      opening: { ...GIUOCO, maxMoves: 0 },
+    });
+    expect(zero.json()).toMatchObject({ move: 'g1f3' });
+    expect((zero.json() as { quality: string }).quality).not.toBe('book');
+  });
+
+  it.each([
+    ['unknown opening id', () => ({ ...game(), opening: { id: 'nope', maxMoves: 5 } })],
+    ['opening without moves', () => ({ fen: game().fen, opening: GIUOCO })],
+    [
+      'moves that do not lead to the fen',
+      () => ({ fen: game('e2e4').fen, moves: ['d2d4'], opening: GIUOCO }),
+    ],
+    ['illegal moves', () => ({ fen: game().fen, moves: ['e2e5'], opening: GIUOCO })],
+    ['malformed move strings', () => ({ ...game(), moves: ['e4'], opening: GIUOCO })],
+    ['too many moves', () => ({ ...game(), moves: Array(601).fill('e2e4'), opening: GIUOCO })],
+    ['depth out of range', () => ({ ...game(), opening: { ...GIUOCO, maxMoves: 99 } })],
+  ])('400 for %s', async (_name, body) => {
+    const app = await appWith(cannedEngine());
+    const res = await post(app, { targetRating: 1600, ...body() });
+    expect(res.statusCode).toBe(400);
+  });
+});
+
+describe.skipIf(!hasStockfish)('opening + real Stockfish', () => {
+  it('follows the Giuoco Piano as White, then the engine takes over after the line', async () => {
+    const pool = new EnginePool([new StockfishProcess({ path: STOCKFISH_PATH })]);
+    const app = await appWith(pool);
+    const g = ChessGame.create();
+    const played: string[] = [];
+    const humanReplies = ['e7e5', 'b8c6', 'f8c5'];
+    const opening = { id: 'italian-game-giuoco-piano', maxMoves: 3 };
+    for (const reply of humanReplies) {
+      const res = await post(app, {
+        fen: g.getFen(),
+        moves: played,
+        targetRating: 1200,
+        seed: 3,
+        opening,
+      });
+      const { move, quality } = res.json() as { move: string; quality: string };
+      expect(quality).toBe('book');
+      expect(g.makeMoveUci(move).ok).toBe(true);
+      played.push(move);
+      expect(g.makeMoveUci(reply).ok).toBe(true);
+      played.push(reply);
+    }
+    expect(played.slice(0, 6)).toEqual(['e2e4', 'e7e5', 'g1f3', 'b8c6', 'f1c4', 'f8c5']);
+    // maxMoves (3) reached: engine plays
+    const res = await post(app, {
+      fen: g.getFen(),
+      moves: played,
+      targetRating: 1200,
+      seed: 3,
+      opening,
+    });
+    expect((res.json() as { quality: string }).quality).not.toBe('book');
+    expect(res.statusCode).toBe(200);
+    await pool.dispose();
+  }, 60_000);
+});
