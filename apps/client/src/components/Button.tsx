@@ -10,14 +10,24 @@ interface Props {
   disabled?: boolean;
   style?: StyleProp<ViewStyle>;
   testID?: string;
+  /** For icon-only labels ("◀") where the visible text is not a good accessible name. */
+  accessibilityLabelOverride?: string;
 }
 
-export function Button({ label, onPress, variant = 'secondary', disabled, style, testID }: Props) {
+export function Button({
+  label,
+  onPress,
+  variant = 'secondary',
+  disabled,
+  style,
+  testID,
+  accessibilityLabelOverride,
+}: Props) {
   return (
     <Pressable
       testID={testID}
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={accessibilityLabelOverride ?? label}
       aria-disabled={!!disabled}
       disabled={disabled}
       onPress={onPress}

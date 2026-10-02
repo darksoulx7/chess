@@ -16,6 +16,7 @@ import { GameOverSheet } from './GameOverSheet';
 import { materialAdvantage, summarizeCaptures } from './captured';
 import { getOpeningIndex, identifyOpening } from '@chess/openings';
 import { useGame, useGameView } from './game-store';
+import { useAnalysis } from '../analysis/analysis-store';
 import { useBotDriver } from './use-bot-driver';
 import { soundFor } from './sound-events';
 import { useClockDisplay } from './use-clock-display';
@@ -219,6 +220,14 @@ export function GameScreen() {
           </View>
           <View style={styles.controls}>
             <Button label="New game" variant="primary" onPress={startAgain} />
+            <Button
+              label="Analyze"
+              onPress={() => {
+                useAnalysis.getState().loadGame(game);
+                router.push('/analysis');
+              }}
+              testID="analyze-game"
+            />
             <Button label="Menu" variant="ghost" onPress={() => router.dismissTo('/')} />
           </View>
           <Text style={styles.fen} selectable testID="fen">

@@ -52,13 +52,17 @@ export function applyMove(pieces: TrackedPiece[], move: MoveRecord): TrackedPiec
 }
 
 /**
- * Rebuilds tracked pieces by replaying history from the initial position.
- * Deterministic, so undo/redo/load all stay consistent without extra bookkeeping.
+ * Rebuilds tracked pieces by replaying history from the initial position (optionally only the
+ * first `ply` half-moves). Deterministic, so undo/redo/load/navigation all stay consistent
+ * without extra bookkeeping.
  */
-export function buildTrackedPieces(game: ChessGame): TrackedPiece[] {
+export function buildTrackedPieces(game: ChessGame, ply?: number): TrackedPiece[] {
   const start = Game.fromFen(game.getInitialFen());
   if (!start.ok) return fromPlaced(game.getPieces());
   let pieces = fromPlaced(start.value.getPieces());
-  for (const move of game.getHistory()) pieces = applyMove(pieces, move);
+  const history = game.getHistory();
+  for (const move of ply === undefined ? history : history.slice(0, ply)) {
+    pieces = applyMove(pieces, move);
+  }
   return pieces;
 }

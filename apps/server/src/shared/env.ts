@@ -20,6 +20,8 @@ const schema = z.object({
   ENGINE_MAX_QUEUE: z.coerce.number().int().min(0).max(200).default(20),
   RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(300),
   BOT_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(60),
+  ANALYSIS_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(240),
+  ANALYSIS_MAX_MS: z.coerce.number().int().min(100).max(30000).default(4000),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
 });
 

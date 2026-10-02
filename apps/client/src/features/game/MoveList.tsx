@@ -1,5 +1,6 @@
 import type { MoveRecord } from '@chess/chess-core';
 import { useEffect, useRef } from 'react';
+import type { MoveClass } from '@chess/engine';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 interface Props {
@@ -7,9 +8,11 @@ interface Props {
   /** Ply (1-based) to highlight; defaults to the last move. */
   activePly?: number;
   onSelectPly?: (ply: number) => void;
+  /** Review classification per ply (1-based); inaccuracies, mistakes and blunders get a symbol. */
+  annotations?: Partial<Record<number, MoveClass>>;
 }
 
-export function MoveList({ history, activePly, onSelectPly }: Props) {
+export function MoveList({ history, activePly, onSelectPly, annotations }: Props) {
   const scroll = useRef<ScrollView>(null);
   useEffect(() => {
     scroll.current?.scrollToEnd({ animated: false });
@@ -33,6 +36,12 @@ export function MoveList({ history, activePly, onSelectPly }: Props) {
         style={[styles.move, active === ply && styles.active]}
       >
         {m.san}
+        {annotations?.[ply] && SYMBOL[annotations[ply] as MoveClass] ? (
+          <Text style={{ color: SYMBOL_COLOR[annotations[ply] as MoveClass] }}>
+            {' '}
+            {SYMBOL[annotations[ply] as MoveClass]}
+          </Text>
+        ) : null}
       </Text>
     ) : (
       <View style={styles.move} />
@@ -51,6 +60,17 @@ export function MoveList({ history, activePly, onSelectPly }: Props) {
     </ScrollView>
   );
 }
+
+const SYMBOL: Partial<Record<MoveClass, string>> = {
+  inaccuracy: '?!',
+  mistake: '?',
+  blunder: '??',
+};
+const SYMBOL_COLOR: Partial<Record<MoveClass, string>> = {
+  inaccuracy: '#f5c542',
+  mistake: '#f59e42',
+  blunder: '#f87171',
+};
 
 const styles = StyleSheet.create({
   root: { flexGrow: 0 },

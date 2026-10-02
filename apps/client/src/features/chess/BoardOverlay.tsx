@@ -1,8 +1,17 @@
 import type { Color, Square } from '@chess/chess-core';
-import { memo } from 'react';
-import Svg, { Circle, Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
+import React, { memo } from 'react';
+import Svg, { Circle, Defs, Polygon, RadialGradient, Rect, Stop, Line } from 'react-native-svg';
+import { arrowGeometry } from './arrows';
 import { isLightSquare, squareToPoint } from './geometry';
 import type { BoardTheme } from './themes';
+
+export interface BoardArrow {
+  from: Square;
+  to: Square;
+  color: string;
+  /** 0..1, default 0.8 */
+  opacity?: number;
+}
 
 export interface LegalTarget {
   square: Square;
@@ -18,6 +27,8 @@ interface Props {
   armed: Square | null;
   checkSquare: Square | null;
   targets: LegalTarget[];
+  /** Annotation / engine arrows, drawn above highlights and below the pieces. */
+  arrows?: BoardArrow[];
   /** Keyboard cursor (web); drawn as an outline. */
   cursor?: Square | null;
 }
@@ -33,6 +44,7 @@ export const BoardOverlay = memo(function BoardOverlay({
   checkSquare,
   targets,
   cursor,
+  arrows,
 }: Props) {
   const cell = size / 8;
   const fill = (sq: Square, light: string, dark: string) => (isLightSquare(sq) ? light : dark);
@@ -84,6 +96,43 @@ export const BoardOverlay = memo(function BoardOverlay({
             );
           })()
         : null}
+      {arrows?.map((a, i) => {
+        const g = arrowGeometry(a.from, a.to, size, orientation);
+        const opacity = a.opacity ?? 0.8;
+        if (g.circle) {
+          return (
+            <Circle
+              key={`a${i}`}
+              cx={g.cx}
+              cy={g.cy}
+              r={cell * 0.46}
+              fill="none"
+              stroke={a.color}
+              strokeWidth={cell * 0.07}
+              opacity={opacity}
+            />
+          );
+        }
+        return (
+          <React.Fragment key={`a${i}`}>
+            <Line
+              x1={g.x1}
+              y1={g.y1}
+              x2={g.x2}
+              y2={g.y2}
+              stroke={a.color}
+              strokeWidth={cell * 0.16}
+              strokeLinecap="round"
+              opacity={opacity}
+            />
+            <Polygon
+              points={g.head.map((p) => `${p.x},${p.y}`).join(' ')}
+              fill={a.color}
+              opacity={opacity}
+            />
+          </React.Fragment>
+        );
+      })}
       {targets.map(({ square, capture }) => {
         const p = squareToPoint(square, size, orientation);
         const cx = p.x + cell / 2;

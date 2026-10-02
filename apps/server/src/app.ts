@@ -5,6 +5,8 @@ import websocket from '@fastify/websocket';
 import Fastify, { type FastifyInstance } from 'fastify';
 import type { Db } from './infrastructure/db.js';
 import type { RedisClient } from './infrastructure/redis.js';
+import { RedisAnalysisCache, type AnalysisCache } from './modules/analysis/cache.js';
+import { registerAnalysisRoutes } from './modules/analysis/routes.js';
 import { registerBotRoutes } from './modules/bot/routes.js';
 import { registerHealthRoutes } from './modules/health/routes.js';
 import type { Env } from './shared/env.js';
@@ -14,9 +16,17 @@ export interface AppDeps {
   db: Db;
   redis: RedisClient;
   engine: EngineService;
+  /** Analysis result cache; defaults to Redis. Injectable so tests never share cached results. */
+  cache?: AnalysisCache;
 }
 
-export async function buildApp({ env, db, redis, engine }: AppDeps): Promise<FastifyInstance> {
+export async function buildApp({
+  env,
+  db,
+  redis,
+  engine,
+  cache,
+}: AppDeps): Promise<FastifyInstance> {
   const app = Fastify({
     logger:
       env.NODE_ENV === 'test'
@@ -45,6 +55,16 @@ export async function buildApp({ env, db, redis, engine }: AppDeps): Promise<Fas
 
   registerHealthRoutes(app, { db, redis });
   registerBotRoutes(app, { engine, rateLimitMax: env.BOT_RATE_LIMIT_MAX });
+  registerAnalysisRoutes(app, {
+    engine,
+    cache:
+      cache ??
+      new RedisAnalysisCache(redis, 60 * 60 * 24, (err) =>
+        app.log.warn({ err }, 'analysis cache error'),
+      ),
+    rateLimitMax: env.ANALYSIS_RATE_LIMIT_MAX,
+    maxSearchMs: env.ANALYSIS_MAX_MS,
+  });
 
   return app;
 }

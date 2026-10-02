@@ -4,6 +4,7 @@ import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Button } from '../src/components/Button';
 import { Screen } from '../src/components/Screen';
 import { StaticBoard } from '../src/features/chess/StaticBoard';
+import { useAnalysis } from '../src/features/analysis/analysis-store';
 import { getApiUrl } from '../src/services/config';
 import { colors, spacing, typography } from '../src/theme/tokens';
 
@@ -38,6 +39,13 @@ export default function Home() {
       </View>
       <View style={styles.actions}>
         <Button label="Play" variant="primary" onPress={() => router.push('/play')} />
+        <Button
+          label="Analyze"
+          onPress={() => {
+            useAnalysis.getState().reset();
+            router.push('/analysis');
+          }}
+        />
         <Button label="Settings" onPress={() => router.push('/settings')} />
       </View>
       <Text style={styles.status} testID="server-status">

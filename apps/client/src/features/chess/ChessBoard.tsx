@@ -4,11 +4,12 @@ import { Platform, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useSharedValue } from 'react-native-reanimated';
 import { BoardBackground } from './BoardBackground';
-import { BoardOverlay, type LegalTarget } from './BoardOverlay';
+import { BoardOverlay, type BoardArrow, type LegalTarget } from './BoardOverlay';
 import { PieceView } from './PieceView';
 import { PromotionPicker } from './PromotionPicker';
 import { BoardController } from './board-controller';
 import { moveCursor, type CursorKey } from './keyboard';
+import { pointToSquare } from './geometry';
 import { useLatestCallback } from './use-latest-callback';
 import {
   IDLE,
@@ -38,6 +39,10 @@ export interface ChessBoardProps {
   onMove: (move: MoveInput, source: 'tap' | 'drag') => void;
   /** Reduced-motion override from the platform; forces instant moves. */
   reduceMotion?: boolean;
+  /** Arrows drawn above the squares (engine suggestions, user annotations). */
+  arrows?: BoardArrow[];
+  /** Web: right-click (drag) draws an annotation; called with from === to for a circle. */
+  onAnnotate?: (from: Square, to: Square) => void;
   testID?: string;
 }
 
@@ -57,6 +62,8 @@ export function ChessBoard(props: ChessBoardProps) {
     isPromotion,
     onMove,
     reduceMotion,
+    arrows,
+    onAnnotate,
     testID,
   } = props;
 
@@ -156,6 +163,8 @@ export function ChessBoard(props: ChessBoardProps) {
   // Keyboard play (web): arrows move a cursor, Enter/Space taps it, Escape cancels.
   const rootRef = useRef<View>(null);
   const [cursor, setCursor] = useState<Square | null>(null);
+  const annotate = useLatestCallback((from: Square, to: Square) => onAnnotate?.(from, to));
+  const annotating = onAnnotate !== undefined;
   useEffect(() => {
     if (Platform.OS !== 'web') return;
     const el = rootRef.current as unknown as HTMLElement | null;
@@ -183,15 +192,39 @@ export function ChessBoard(props: ChessBoardProps) {
         controller.reset();
       }
     };
+    // Right-click annotations (analysis): press on one square, release on another for an arrow.
+    let annotateFrom: Square | null = null;
+    const squareAt = (e: MouseEvent) => {
+      const r = el.getBoundingClientRect();
+      return pointToSquare(e.clientX - r.left, e.clientY - r.top, size, orientation);
+    };
+    const onContextMenu = (e: Event) => {
+      if (annotating) e.preventDefault();
+    };
+    const onMouseDown = (e: MouseEvent) => {
+      if (annotating && e.button === 2) annotateFrom = squareAt(e);
+    };
+    const onMouseUp = (e: MouseEvent) => {
+      if (!annotating || e.button !== 2 || !annotateFrom) return;
+      const to = squareAt(e);
+      if (to) annotate(annotateFrom, to);
+      annotateFrom = null;
+    };
+    el.addEventListener('contextmenu', onContextMenu);
+    el.addEventListener('mousedown', onMouseDown);
+    el.addEventListener('mouseup', onMouseUp);
     el.addEventListener('focus', onFocus);
     el.addEventListener('blur', onBlur);
     el.addEventListener('keydown', onKey);
     return () => {
+      el.removeEventListener('contextmenu', onContextMenu);
+      el.removeEventListener('mousedown', onMouseDown);
+      el.removeEventListener('mouseup', onMouseUp);
       el.removeEventListener('focus', onFocus);
       el.removeEventListener('blur', onBlur);
       el.removeEventListener('keydown', onKey);
     };
-  }, [controller, orientation]);
+  }, [controller, orientation, size, annotating, annotate]);
 
   const targets: LegalTarget[] = useMemo(() => {
     if (!settings.showLegalMoves || !ix.selected) return [];
@@ -237,6 +270,7 @@ export function ChessBoard(props: ChessBoardProps) {
             checkSquare={settings.showCheck ? checkSquare : null}
             targets={targets}
             cursor={cursor}
+            arrows={arrows}
           />
           {pieces.map((piece) => (
             <PieceView
