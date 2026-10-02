@@ -1,0 +1,35 @@
+# Render Blueprint: backend only. The web client is deployed on Vercel.
+services:
+  - type: web
+    name: chess-server
+    runtime: docker
+    dockerfilePath: ./apps/server/Dockerfile
+    dockerContext: ./
+    healthCheckPath: /health
+    plan: 0.5c-512mb
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: chess-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: chess-redis
+          property: connectionString
+      # Set to the Vercel production URL(s), comma-separated. Not committed.
+      - key: CORS_ORIGINS
+        sync: false
+
+  - type: keyvalue
+    name: chess-redis
+    plan: free
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: [] # internal connections only
+
+databases:
+  - name: chess-db
+    plan: 0.1c-256mb
+    postgresMajorVersion: '16'

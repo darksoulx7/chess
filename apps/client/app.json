@@ -1,0 +1,16 @@
+{
+  "expo": {
+    "name": "Chess",
+    "slug": "chess",
+    "scheme": "chess",
+    "version": "0.1.0",
+    "orientation": "default",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "ios": { "supportsTablet": true, "bundleIdentifier": "app.chess.client" },
+    "android": { "package": "app.chess.client" },
+    "web": { "bundler": "metro", "output": "single", "favicon": "./assets/favicon.png" },
+    "plugins": ["expo-router"],
+    "experiments": { "typedRoutes": true }
+  }
+}
