@@ -1,6 +1,6 @@
 import type { Color, MoveInput, Piece, PromotionPiece, Square } from '@chess/chess-core';
-import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
-import { View } from 'react-native';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Platform, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useSharedValue } from 'react-native-reanimated';
 import { BoardBackground } from './BoardBackground';
@@ -8,6 +8,7 @@ import { BoardOverlay, type LegalTarget } from './BoardOverlay';
 import { PieceView } from './PieceView';
 import { PromotionPicker } from './PromotionPicker';
 import { BoardController } from './board-controller';
+import { moveCursor, type CursorKey } from './keyboard';
 import { useLatestCallback } from './use-latest-callback';
 import {
   IDLE,
@@ -152,6 +153,46 @@ export function ChessBoard(props: ChessBoardProps) {
     return Gesture.Race(pan, tap);
   }, [controller]);
 
+  // Keyboard play (web): arrows move a cursor, Enter/Space taps it, Escape cancels.
+  const rootRef = useRef<View>(null);
+  const [cursor, setCursor] = useState<Square | null>(null);
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const el = rootRef.current as unknown as HTMLElement | null;
+    if (!el) return;
+    el.tabIndex = 0;
+    el.setAttribute('role', 'application');
+    // Only keyboard focus shows the cursor; clicking the board with a mouse must not.
+    const onFocus = () => {
+      if (el.matches(':focus-visible')) setCursor((c) => c ?? (orientation === 'w' ? 'e2' : 'e7'));
+    };
+    const onBlur = () => setCursor(null);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key.startsWith('Arrow')) {
+        e.preventDefault();
+        setCursor((c) =>
+          moveCursor(c ?? (orientation === 'w' ? 'e2' : 'e7'), e.key as CursorKey, orientation),
+        );
+      } else if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        setCursor((c) => {
+          if (c) controller.tapSquare(c);
+          return c;
+        });
+      } else if (e.key === 'Escape') {
+        controller.reset();
+      }
+    };
+    el.addEventListener('focus', onFocus);
+    el.addEventListener('blur', onBlur);
+    el.addEventListener('keydown', onKey);
+    return () => {
+      el.removeEventListener('focus', onFocus);
+      el.removeEventListener('blur', onBlur);
+      el.removeEventListener('keydown', onKey);
+    };
+  }, [controller, orientation]);
+
   const targets: LegalTarget[] = useMemo(() => {
     if (!settings.showLegalMoves || !ix.selected) return [];
     const from = ix.selected;
@@ -169,7 +210,11 @@ export function ChessBoard(props: ChessBoardProps) {
   const promotingColor = pending ? (pieceMap.get(pending.from)?.color ?? turn) : turn;
 
   return (
-    <View style={{ width: size, height: size }}>
+    <View
+      ref={rootRef}
+      style={{ width: size, height: size }}
+      accessibilityLabel="Chess board. Use arrow keys to move the cursor, Enter to select or move."
+    >
       <GestureDetector gesture={gesture}>
         <View
           testID={testID}
@@ -191,6 +236,7 @@ export function ChessBoard(props: ChessBoardProps) {
             armed={ix.armed}
             checkSquare={settings.showCheck ? checkSquare : null}
             targets={targets}
+            cursor={cursor}
           />
           {pieces.map((piece) => (
             <PieceView

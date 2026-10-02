@@ -24,3 +24,12 @@ Logic is split from rendering so it is unit-testable:
 Drag-and-drop moves skip the slide animation (the piece is already where it was dropped). Piece artwork is original to this project.
 
 Tests: `pnpm --filter @chess/client test` (unit) and `pnpm --filter @chess/client e2e` (Playwright against the web export: click-to-move, drag, illegal drop, promotion, flip, undo, checkmate lock).
+
+## UI system (Phase 3)
+
+- Tokens in `src/theme/tokens.ts` (colors, spacing, radius, typography, motion, elevation); shared components in `src/components` (Button, Segmented, ToggleRow, Sheet, Screen). Accessibility state uses `aria-*` props (React Native Web ignores `accessibilityState`).
+- Clock logic is pure and shared: `@chess/game-types/clock` takes `now` explicitly, so the server can reuse it as the authority for online games. Local games use it for display and timeout; undo is disabled when a clock is on.
+- Settings persist via zustand `persist` + AsyncStorage (`chess.settings.v1`); stored data is sanitised on load.
+- Sounds are synthesized by `scripts/generate-sounds.mjs` (original, license-free) and played through `expo-audio`; failures are logged once and never affect play.
+- Web keyboard play: arrow keys move a cursor (shown only on `:focus-visible`), Enter/Space select or move, Escape cancels.
+- Reduced motion (`AccessibilityInfo`) forces instant moves.

@@ -1,7 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Button } from '../src/components/Button';
+import { Screen } from '../src/components/Screen';
+import { StaticBoard } from '../src/features/chess/StaticBoard';
 import { getApiUrl } from '../src/services/config';
+import { colors, spacing, typography } from '../src/theme/tokens';
 
 interface Readiness {
   status: string;
@@ -15,27 +19,42 @@ async function fetchReadiness(): Promise<Readiness> {
 }
 
 export default function Home() {
-  const { data, error, isLoading } = useQuery({ queryKey: ['ready'], queryFn: fetchReadiness });
+  const router = useRouter();
+  const { width } = useWindowDimensions();
+  const { data, error, isLoading } = useQuery({
+    queryKey: ['ready'],
+    queryFn: fetchReadiness,
+    retry: false,
+  });
+  const board = Math.min(width - 48, 360);
+  const server = isLoading ? 'Connecting…' : error ? 'Server offline' : `Server ${data?.status}`;
+
   return (
-    <View style={styles.root}>
-      <Text style={styles.title}>Chess</Text>
-      <Link href="/play/local" style={styles.link}>
-        Play on this device
-      </Link>
-      <Text style={styles.status}>
-        {isLoading
-          ? 'Connecting to server…'
-          : error
-            ? 'Server unreachable'
-            : `Server ${data?.status} · db ${data?.database} · redis ${data?.redis}`}
+    <Screen scroll>
+      <View style={styles.hero}>
+        <Text style={styles.title}>Chess</Text>
+        <Text style={styles.subtitle}>Play, practice and analyze.</Text>
+        <StaticBoard size={board} />
+      </View>
+      <View style={styles.actions}>
+        <Button
+          label="Play on this device"
+          variant="primary"
+          onPress={() => router.push('/play')}
+        />
+        <Button label="Settings" onPress={() => router.push('/settings')} />
+      </View>
+      <Text style={styles.status} testID="server-status">
+        {server}
       </Text>
-    </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 },
-  title: { color: '#f2f2f2', fontSize: 40, fontWeight: '700' },
-  link: { color: '#8ab4ff', fontSize: 18, fontWeight: '600' },
-  status: { color: '#9aa0a6', fontSize: 14 },
+  hero: { alignItems: 'center', gap: spacing.md, paddingTop: spacing.xl },
+  title: { color: colors.text, ...typography.display },
+  subtitle: { color: colors.textMuted, ...typography.body, marginBottom: spacing.md },
+  actions: { gap: spacing.sm },
+  status: { color: colors.textFaint, ...typography.caption, textAlign: 'center' },
 });

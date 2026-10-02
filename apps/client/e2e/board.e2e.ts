@@ -136,7 +136,7 @@ describe('local game on the web board', () => {
       await click(b);
       await settle();
     }
-    expect(await status()).toBe('Checkmate — Black wins');
+    expect(await status()).toBe('Black wins — Checkmate');
     const end = await fen();
     await click('a2');
     await click('a3');

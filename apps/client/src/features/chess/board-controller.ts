@@ -87,7 +87,13 @@ export class BoardController {
     const c = this.current;
     if (!c) return;
     const square = pointToSquare(x, y, c.size, c.orientation);
-    if (!square) return;
+    if (square) this.tapSquare(square);
+  }
+
+  /** Same as a tap, addressed by square (keyboard input). */
+  tapSquare(square: Square): void {
+    const c = this.current;
+    if (!c) return;
     const outcome = tapSquare(c.interaction, square, c.ctx);
     this.hooks.setInteraction(outcome.state);
     if (outcome.move) this.hooks.emitMove(outcome.move, false);

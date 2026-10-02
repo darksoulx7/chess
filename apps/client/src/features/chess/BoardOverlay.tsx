@@ -18,6 +18,8 @@ interface Props {
   armed: Square | null;
   checkSquare: Square | null;
   targets: LegalTarget[];
+  /** Keyboard cursor (web); drawn as an outline. */
+  cursor?: Square | null;
 }
 
 /** Square highlights and legal-move markers drawn between the board and the pieces. */
@@ -30,6 +32,7 @@ export const BoardOverlay = memo(function BoardOverlay({
   armed,
   checkSquare,
   targets,
+  cursor,
 }: Props) {
   const cell = size / 8;
   const fill = (sq: Square, light: string, dark: string) => (isLightSquare(sq) ? light : dark);
@@ -63,6 +66,24 @@ export const BoardOverlay = memo(function BoardOverlay({
         : null}
       {selected ? rect(selected, theme.selectedSquare, 'sel') : null}
       {armed ? rect(armed, theme.selectedSquare, 'armed') : null}
+      {cursor
+        ? (() => {
+            const p = squareToPoint(cursor, size, orientation);
+            const w = Math.max(3, cell * 0.06);
+            return (
+              <Rect
+                key="cursor"
+                x={p.x + w / 2}
+                y={p.y + w / 2}
+                width={cell - w}
+                height={cell - w}
+                fill="none"
+                stroke="#ffffff"
+                strokeWidth={w}
+              />
+            );
+          })()
+        : null}
       {targets.map(({ square, capture }) => {
         const p = squareToPoint(square, size, orientation);
         const cx = p.x + cell / 2;

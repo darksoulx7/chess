@@ -1,6 +1,9 @@
 import type { ChessGame, Color, MoveRecord, Square } from '@chess/chess-core';
 import { buildTrackedPieces, type TrackedPiece } from '../chess/tracked-pieces';
 
+export type ResultOverride =
+  { kind: 'timeout'; loser: Color } | { kind: 'resign'; loser: Color } | { kind: 'agreement' };
+
 export interface GameView {
   fen: string;
   turn: Color;
@@ -36,5 +39,55 @@ export function deriveGameView(game: ChessGame): GameView {
     checkSquare,
     status,
     isOver: game.isGameOver(),
+  };
+}
+
+export interface Outcome {
+  over: boolean;
+  /** 'w' | 'b' for a decisive result, 'draw' for a draw, null while in progress. */
+  winner: Color | 'draw' | null;
+  title: string;
+  detail: string;
+}
+
+const NAME = (c: Color) => (c === 'w' ? 'White' : 'Black');
+const other = (c: Color): Color => (c === 'w' ? 'b' : 'w');
+
+const DRAW_TEXT = {
+  stalemate: 'Stalemate',
+  'insufficient-material': 'Insufficient material',
+  'threefold-repetition': 'Threefold repetition',
+  'fifty-move-rule': 'Fifty-move rule',
+} as const;
+
+/** Combines the chess status with an external result (timeout, resignation, agreed draw). */
+export function getOutcome(view: GameView, override: ResultOverride | null): Outcome {
+  if (override) {
+    if (override.kind === 'agreement') {
+      return { over: true, winner: 'draw', title: 'Draw', detail: 'Draw by agreement' };
+    }
+    const winner = other(override.loser);
+    return {
+      over: true,
+      winner,
+      title: `${NAME(winner)} wins`,
+      detail:
+        override.kind === 'timeout'
+          ? `${NAME(override.loser)} ran out of time`
+          : `${NAME(override.loser)} resigned`,
+    };
+  }
+  const s = view.status;
+  if (s.state === 'checkmate') {
+    return { over: true, winner: s.winner, title: `${NAME(s.winner)} wins`, detail: 'Checkmate' };
+  }
+  if (s.state === 'draw') {
+    return { over: true, winner: 'draw', title: 'Draw', detail: DRAW_TEXT[s.reason] };
+  }
+  return {
+    over: false,
+    winner: null,
+    title: `${NAME(view.turn)} to move`,
+    detail: s.inCheck ? 'Check' : '',
   };
 }

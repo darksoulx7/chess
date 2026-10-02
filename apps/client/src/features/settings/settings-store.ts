@@ -1,4 +1,6 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
+import { createJSONStorage, persist } from 'zustand/middleware';
 
 export type AnimationSpeed = 'off' | 'fast' | 'normal' | 'slow';
 
@@ -38,8 +40,38 @@ interface SettingsState extends BoardSettings {
   reset: () => void;
 }
 
-export const useSettings = create<SettingsState>((set) => ({
-  ...DEFAULT_SETTINGS,
-  set: (key, value) => set({ [key]: value } as Pick<BoardSettings, typeof key>),
-  reset: () => set({ ...DEFAULT_SETTINGS }),
-}));
+const SETTING_KEYS = Object.keys(DEFAULT_SETTINGS) as Array<keyof BoardSettings>;
+
+/** Keeps only known keys whose stored type matches the default, so a corrupt/old blob can't break the UI. */
+export function sanitizeSettings(raw: unknown): Partial<BoardSettings> {
+  if (typeof raw !== 'object' || raw === null) return {};
+  const out: Record<string, unknown> = {};
+  for (const key of SETTING_KEYS) {
+    const value = (raw as Record<string, unknown>)[key];
+    if (typeof value === typeof DEFAULT_SETTINGS[key]) out[key] = value;
+  }
+  if (out.animationSpeed && !((out.animationSpeed as string) in ANIMATION_MS))
+    delete out.animationSpeed;
+  return out as Partial<BoardSettings>;
+}
+
+export const useSettings = create<SettingsState>()(
+  persist(
+    (set) => ({
+      ...DEFAULT_SETTINGS,
+      set: (key, value) => set({ [key]: value } as Pick<BoardSettings, typeof key>),
+      reset: () => set({ ...DEFAULT_SETTINGS }),
+    }),
+    {
+      name: 'chess.settings.v1',
+      version: 1,
+      storage: createJSONStorage(() => AsyncStorage),
+      partialize: (s): BoardSettings => {
+        const out = {} as Record<string, unknown>;
+        for (const key of SETTING_KEYS) out[key] = s[key];
+        return out as unknown as BoardSettings;
+      },
+      merge: (persisted, current) => ({ ...current, ...sanitizeSettings(persisted) }),
+    },
+  ),
+);

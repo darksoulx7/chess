@@ -25,6 +25,9 @@ pnpm dev                                  # server on :4000, web client via Expo
 | `pnpm typecheck` / `pnpm lint` / `pnpm test` / `pnpm build` | verification, all workspaces       |
 | `pnpm --filter @chess/client android` / `ios`               | native dev build (needs SDK/Xcode) |
 
+`scripts/dev-services.sh` starts native Postgres + Redis when Docker is unavailable.
+`pnpm --filter @chess/client e2e` runs the Playwright suite against the web export (set `CHROMIUM_PATH` if Chromium is not at `/opt/pw-browsers/chromium`).
+
 Server tests need Postgres and Redis reachable via `DATABASE_URL` / `REDIS_URL`
 (defaults: `postgres://chess:chess@127.0.0.1:5432/chess`, `redis://127.0.0.1:6379`).
 
