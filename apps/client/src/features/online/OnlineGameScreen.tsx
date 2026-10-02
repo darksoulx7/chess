@@ -22,6 +22,7 @@ import { MoveList } from '../game/MoveList';
 import { PlayerBar } from '../game/PlayerBar';
 import { soundFor } from '../game/sound-events';
 import { useClockDisplay } from '../game/use-clock-display';
+import { useKeepAwakeWhile } from '../game/use-game-device';
 import { useAuth } from '../auth/auth-store';
 import { useSettings } from '../settings/settings-store';
 import { playSound } from '../settings/sounds';
@@ -58,6 +59,7 @@ export function OnlineGameScreen({ id }: { id: string }) {
   const chess = useMemo(() => (g ? buildGame(g) : null), [g]);
   const view = useMemo(() => (chess ? deriveGameView(chess) : null), [chess]);
   const me = g ? myColor(g, userId) : null;
+  useKeepAwakeWhile(g?.status === 'ACTIVE');
   const times = useClockDisplay(g?.clock ?? null, undefined, g?.offset ?? 0);
 
   // Sound on every new move (own optimistic moves included).

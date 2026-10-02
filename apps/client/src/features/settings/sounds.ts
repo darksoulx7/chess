@@ -1,5 +1,6 @@
 import { createAudioPlayer, type AudioPlayer } from 'expo-audio';
 import type { SoundName } from '../game/sound-events';
+import { hapticFor } from './haptics';
 import { useSettings } from './settings-store';
 import capture from '../../../assets/sounds/capture.wav';
 import castle from '../../../assets/sounds/castle.wav';
@@ -18,6 +19,7 @@ let warned = false;
  * satisfies browser autoplay policies. Audio failures must never break gameplay: they are logged once.
  */
 export function playSound(name: SoundName): void {
+  hapticFor(name);
   if (!useSettings.getState().soundEnabled) return;
   try {
     let player = players.get(name);

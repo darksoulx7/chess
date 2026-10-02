@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Platform, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Button } from '../src/components/Button';
 import { Screen } from '../src/components/Screen';
 import { Segmented } from '../src/components/Segmented';
@@ -106,6 +106,14 @@ export default function Settings() {
           value={s.moveConfirmation}
           onChange={(v) => s.set('moveConfirmation', v)}
         />
+        {Platform.OS !== 'web' ? (
+          <ToggleRow
+            label="Haptics"
+            hint="Vibration feedback on moves, captures and check."
+            value={s.hapticsEnabled}
+            onChange={(v) => s.set('hapticsEnabled', v)}
+          />
+        ) : null}
         <ToggleRow
           label="Sound"
           value={s.soundEnabled}

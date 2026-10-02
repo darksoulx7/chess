@@ -107,3 +107,7 @@ Each phase ends with `pnpm typecheck`, `pnpm lint`, `pnpm test` (and `pnpm build
 - chess-core: exhaustive rule fixtures (perft counts for known positions to verify move generation integration, plus targeted mate/stalemate/castling/ep/promotion/repetition/50-move/insufficient-material cases).
 - Server: integration tests against real Postgres/Redis (service containers in CI, native here).
 - CI: GitHub Actions running install, typecheck, lint, test, build.
+
+## 9. Status
+
+Phases 0–9 are implemented. Per-phase detail: `CHESS-CORE.md`, `ARCHITECTURE.md`, `BOT.md`, `OPENINGS.md`, `ANALYSIS.md`, `AUTH.md`, `ONLINE-GAMES.md`, `MOBILE.md`. Open release items: Stockfish licensing review (`BOT.md`), native device verification, push notifications, store assets (`MOBILE.md`).

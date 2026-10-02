@@ -22,6 +22,7 @@ import { useAutoSaveGame } from './use-save-game';
 import { useBotDriver } from './use-bot-driver';
 import { soundFor } from './sound-events';
 import { useClockDisplay } from './use-clock-display';
+import { useBackGuard, useKeepAwakeWhile } from './use-game-device';
 
 const BAR_HEIGHT = 52;
 
@@ -44,7 +45,7 @@ export function GameScreen() {
   const plannedOpening = useGame((s) => s.opening);
   const settings = useSettings();
   const [reduceMotion, setReduceMotion] = useState(false);
-  const [confirm, setConfirm] = useState<'resign' | 'draw' | null>(null);
+  const [confirm, setConfirm] = useState<'resign' | 'draw' | 'leave' | null>(null);
   const [closedVersion, setClosedVersion] = useState<number | null>(null);
 
   useEffect(() => {
@@ -57,6 +58,11 @@ export function GameScreen() {
   const signedIn = useAuth((s) => s.status === 'signedIn');
   const save = useAutoSaveGame(outcome.over);
   const times = useClockDisplay(clock, checkFlag);
+  const inProgress = !outcome.over && view.history.length > 0;
+  useKeepAwakeWhile(!outcome.over);
+  // A local/bot game lives only on this device: confirm before the back button throws it away.
+  const askLeave = useCallback(() => setConfirm('leave'), []);
+  useBackGuard(inProgress, askLeave);
 
   // Sound: one effect per new move or per externally-decided result.
   const seen = useRef({ plies: view.history.length, over: outcome.over });
@@ -242,18 +248,21 @@ export function GameScreen() {
 
       <Sheet visible={confirm !== null} onClose={() => setConfirm(null)} label="Confirm">
         <Text style={styles.confirmTitle}>
-          {confirm === 'resign'
-            ? mode === 'BOT'
-              ? 'Resign this game?'
-              : `${sideName(view.turn)} resigns?`
-            : 'Agree to a draw?'}
+          {confirm === 'leave'
+            ? 'Leave this game? Unfinished games are not saved.'
+            : confirm === 'resign'
+              ? mode === 'BOT'
+                ? 'Resign this game?'
+                : `${sideName(view.turn)} resigns?`
+              : 'Agree to a draw?'}
         </Text>
         <View style={styles.controls}>
           <Button
-            label={confirm === 'resign' ? 'Resign' : 'Draw'}
+            label={confirm === 'leave' ? 'Leave' : confirm === 'resign' ? 'Resign' : 'Draw'}
             variant="primary"
             onPress={() => {
-              if (confirm === 'resign') resign(mode === 'BOT' ? humanColor : view.turn);
+              if (confirm === 'leave') router.dismissTo('/');
+              else if (confirm === 'resign') resign(mode === 'BOT' ? humanColor : view.turn);
               else agreeDraw();
               setConfirm(null);
             }}

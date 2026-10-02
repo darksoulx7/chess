@@ -12,6 +12,7 @@ export const preferencesSchema = z
     showCheck: z.boolean(),
     animationSpeed: z.enum(['off', 'fast', 'normal', 'slow']),
     soundEnabled: z.boolean(),
+    hapticsEnabled: z.boolean(),
     moveConfirmation: z.boolean(),
     boardThemeId: z.string().min(1).max(40),
     pieceThemeId: z.string().min(1).max(40),

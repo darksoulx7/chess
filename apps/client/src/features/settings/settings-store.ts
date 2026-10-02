@@ -11,6 +11,7 @@ export interface BoardSettings {
   showCheck: boolean;
   animationSpeed: AnimationSpeed;
   soundEnabled: boolean;
+  hapticsEnabled: boolean;
   moveConfirmation: boolean;
   boardThemeId: string;
   pieceThemeId: string;
@@ -23,6 +24,7 @@ export const DEFAULT_SETTINGS: BoardSettings = {
   showCheck: true,
   animationSpeed: 'normal',
   soundEnabled: true,
+  hapticsEnabled: true,
   moveConfirmation: false,
   boardThemeId: 'classic',
   pieceThemeId: 'classic',
