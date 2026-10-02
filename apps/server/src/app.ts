@@ -15,9 +15,20 @@ import { LoginThrottle } from './modules/auth/login-throttle.js';
 import { registerGameRoutes } from './modules/games/routes.js';
 import { registerSavedGameRoutes } from './modules/games/saved-routes.js';
 import { registerUserRoutes } from './modules/users/routes.js';
+import { GameHub } from './modules/online/hub.js';
+import { registerOnlineRoutes } from './modules/online/routes.js';
+import { OnlineService } from './modules/online/service.js';
+import { registerOnlineSocket } from './modules/online/ws.js';
 import { registerBotRoutes } from './modules/bot/routes.js';
 import { registerHealthRoutes } from './modules/health/routes.js';
 import type { Env } from './shared/env.js';
+
+declare module 'fastify' {
+  interface FastifyInstance {
+    /** Online games service (exposed for tests and the sweeper). */
+    online: OnlineService;
+  }
+}
 
 export interface AppDeps {
   env: Env;
@@ -64,7 +75,7 @@ export async function buildApp({
     maxAge: 600,
   });
   await app.register(helmet, { contentSecurityPolicy: false }); // JSON API; CSP is the web host's concern
-  await app.register(websocket);
+  await app.register(websocket, { options: { maxPayload: 16 * 1024 } });
   // Global default; the expensive bot route sets its own, lower limit. /health is exempt (platform probes).
   await app.register(rateLimit, {
     global: true,
@@ -79,6 +90,31 @@ export async function buildApp({
   );
   const authService = new AuthService(db, env, throttle);
   registerAuthRoutes(app, { service: authService, db, rateLimitMax: env.AUTH_RATE_LIMIT_MAX });
+
+  // Online games: HTTP for create/join/lobby, WebSocket for play. The sweeper ends timed-out games.
+  const hub = new GameHub(redis, (err, context) => app.log.warn({ err, context }, 'online hub'));
+  await hub.start();
+  const online = new OnlineService(db, hub, Date.now, (err, context) =>
+    app.log.warn({ err, context }, 'online service'),
+  );
+  registerOnlineRoutes(app, { service: online, db, rateLimitMax: env.ONLINE_RATE_LIMIT_MAX });
+  registerOnlineSocket(app, {
+    service: online,
+    hub,
+    db,
+    jwtSecret: env.JWT_SECRET,
+    ratePerSecond: env.WS_RATE_PER_SECOND,
+    authTimeoutMs: env.WS_AUTH_TIMEOUT_MS,
+  });
+  app.decorate('online', online);
+  if (env.NODE_ENV !== 'test') {
+    const sweeper = setInterval(
+      () => void online.sweep().catch((err) => app.log.warn({ err }, 'sweep failed')),
+      env.ONLINE_SWEEP_MS,
+    );
+    app.addHook('onClose', async () => clearInterval(sweeper));
+  }
+  app.addHook('onClose', async () => hub.stop());
 
   registerUserRoutes(app, { db });
   registerGameRoutes(app, { db });

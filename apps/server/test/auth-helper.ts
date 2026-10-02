@@ -30,6 +30,7 @@ export async function createHarness(extraEnv: Record<string, string> = {}): Prom
     JWT_SECRET: SECRET,
     // Tests register many users; the limiter itself is covered by a dedicated test that overrides this.
     AUTH_RATE_LIMIT_MAX: '10000',
+    ONLINE_RATE_LIMIT_MAX: '10000',
     ...extraEnv,
   });
   const app = await buildApp({ env, db: t.db, redis, engine: noEngine });

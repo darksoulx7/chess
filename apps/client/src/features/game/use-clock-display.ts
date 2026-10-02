@@ -5,6 +5,8 @@ import { useEffect, useState } from 'react';
 export function useClockDisplay(
   clock: ClockState | null,
   onTick?: (now: number) => void,
+  /** Added to local time to get the clock's time base (online games: server time offset). */
+  offset = 0,
 ): { w: number; b: number } | null {
   const [now, setNow] = useState(() => Date.now());
   const running = clock?.running != null;
@@ -21,5 +23,5 @@ export function useClockDisplay(
 
   if (!clock) return null;
   // When no clock is running, remaining() ignores `now`, so the last tick value is always correct.
-  return { w: remaining(clock, 'w', now), b: remaining(clock, 'b', now) };
+  return { w: remaining(clock, 'w', now + offset), b: remaining(clock, 'b', now + offset) };
 }

@@ -45,6 +45,12 @@ export default function PlayModes() {
           onPress={() => router.push('/play/bot-setup')}
         />
         <ModeCard
+          testID="mode-online"
+          title="Play online"
+          body="Challenge a friend with a code, or join an open game."
+          onPress={() => router.push('/play/online')}
+        />
+        <ModeCard
           testID="mode-local"
           title="Play on this device"
           body="Two players share one board."

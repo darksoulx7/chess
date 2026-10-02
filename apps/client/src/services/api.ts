@@ -73,3 +73,13 @@ export async function api<T>(path: string, opts: RequestOptions = {}): Promise<T
   }
   return parse<T>(res);
 }
+
+/** Current access token without a request (used by the WebSocket client). */
+export function currentAccessToken(): string | null {
+  return hooks?.getAccessToken() ?? null;
+}
+
+/** Forces a token refresh through the same single-flight path as REST 401 handling. */
+export function refreshAccessToken(): Promise<string | null> {
+  return hooks ? hooks.refreshAccessToken() : Promise.resolve(null);
+}

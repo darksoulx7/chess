@@ -196,6 +196,9 @@ importers:
       tsx:
         specifier: ^4.23.15
         version: 4.23.15
+      ws:
+        specifier: ^8.22.0
+        version: 8.22.0
 
   packages/chess-core:
     dependencies:
@@ -6042,9 +6045,7 @@ snapshots:
       metro-runtime: 0.84.5
     transitivePeerDependencies:
       - '@babel/core'
-      - bufferutil
       - supports-color
-      - utf-8-validate
 
   '@react-native/normalize-colors@0.74.89': {}
 

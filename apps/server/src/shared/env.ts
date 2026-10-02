@@ -32,6 +32,12 @@ const schema = z.object({
     .enum(['true', 'false'])
     .default('true')
     .transform((v) => v === 'true'),
+  /** Per-IP/minute limit for creating and joining online games. */
+  ONLINE_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(30),
+  /** How often the server checks for timed-out / abandoned online games. */
+  ONLINE_SWEEP_MS: z.coerce.number().int().min(50).max(60_000).default(1000),
+  WS_RATE_PER_SECOND: z.coerce.number().int().min(1).max(1000).default(20),
+  WS_AUTH_TIMEOUT_MS: z.coerce.number().int().min(100).max(60_000).default(5000),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
 });
 
