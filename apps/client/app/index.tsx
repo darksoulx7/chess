@@ -37,11 +37,7 @@ export default function Home() {
         <StaticBoard size={board} />
       </View>
       <View style={styles.actions}>
-        <Button
-          label="Play on this device"
-          variant="primary"
-          onPress={() => router.push('/play')}
-        />
+        <Button label="Play" variant="primary" onPress={() => router.push('/play')} />
         <Button label="Settings" onPress={() => router.push('/settings')} />
       </View>
       <Text style={styles.status} testID="server-status">

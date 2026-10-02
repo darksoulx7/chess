@@ -11,5 +11,8 @@
   },
   "devDependencies": {
     "@chess/config": "workspace:*"
+  },
+  "dependencies": {
+    "@chess/chess-core": "workspace:*"
   }
 }

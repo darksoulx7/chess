@@ -1,8 +1,11 @@
 import cors from '@fastify/cors';
+import rateLimit from '@fastify/rate-limit';
+import type { EngineService } from '@chess/engine';
 import websocket from '@fastify/websocket';
 import Fastify, { type FastifyInstance } from 'fastify';
 import type { Db } from './infrastructure/db.js';
 import type { RedisClient } from './infrastructure/redis.js';
+import { registerBotRoutes } from './modules/bot/routes.js';
 import { registerHealthRoutes } from './modules/health/routes.js';
 import type { Env } from './shared/env.js';
 
@@ -10,9 +13,10 @@ export interface AppDeps {
   env: Env;
   db: Db;
   redis: RedisClient;
+  engine: EngineService;
 }
 
-export async function buildApp({ env, db, redis }: AppDeps): Promise<FastifyInstance> {
+export async function buildApp({ env, db, redis, engine }: AppDeps): Promise<FastifyInstance> {
   const app = Fastify({
     logger:
       env.NODE_ENV === 'test'
@@ -31,8 +35,16 @@ export async function buildApp({ env, db, redis }: AppDeps): Promise<FastifyInst
     credentials: true,
   });
   await app.register(websocket);
+  // Global default; the expensive bot route sets its own, lower limit. /health is exempt (platform probes).
+  await app.register(rateLimit, {
+    global: true,
+    max: env.RATE_LIMIT_MAX,
+    timeWindow: '1 minute',
+    allowList: (req) => req.url.startsWith('/health'),
+  });
 
   registerHealthRoutes(app, { db, redis });
+  registerBotRoutes(app, { engine, rateLimitMax: env.BOT_RATE_LIMIT_MAX });
 
   return app;
 }

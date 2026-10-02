@@ -12,7 +12,7 @@
     "build": "expo export --platform web",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run --passWithNoTests --exclude \"e2e/**\"",
-    "e2e": "expo export --platform web && vitest run --config vitest.e2e.config.ts"
+    "e2e": "pnpm --filter @chess/server build && EXPO_PUBLIC_API_URL=http://localhost:4100 expo export --platform web --clear && vitest run --config vitest.e2e.config.ts"
   },
   "dependencies": {
     "@chess/chess-core": "workspace:*",

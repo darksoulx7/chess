@@ -4,6 +4,12 @@ import { buildApp } from '../src/app.js';
 import { createDb } from '../src/infrastructure/db.js';
 import { createRedis } from '../src/infrastructure/redis.js';
 import { loadEnv } from '../src/shared/env.js';
+import type { EngineService } from '@chess/engine';
+
+const noEngine: EngineService = {
+  analyze: async () => ({ lines: [], bestMove: null }),
+  dispose: async () => {},
+};
 
 const env = loadEnv({
   NODE_ENV: 'test',
@@ -17,7 +23,7 @@ describe('health', () => {
   let app: FastifyInstance;
 
   beforeAll(async () => {
-    app = await buildApp({ env, db, redis });
+    app = await buildApp({ env, db, redis, engine: noEngine });
   });
   afterAll(async () => {
     await app.close();

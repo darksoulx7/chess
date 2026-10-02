@@ -15,6 +15,11 @@ const schema = z.object({
         .map((s) => s.trim())
         .filter(Boolean),
     ),
+  STOCKFISH_PATH: z.string().default('stockfish'),
+  ENGINE_POOL_SIZE: z.coerce.number().int().min(1).max(16).default(2),
+  ENGINE_MAX_QUEUE: z.coerce.number().int().min(0).max(200).default(20),
+  RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(300),
+  BOT_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(60),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
 });
 

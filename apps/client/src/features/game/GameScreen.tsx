@@ -14,22 +14,29 @@ import { MoveList } from './MoveList';
 import { PlayerBar } from './PlayerBar';
 import { GameOverSheet } from './GameOverSheet';
 import { materialAdvantage, summarizeCaptures } from './captured';
-import { useLocalGame, useLocalGameView } from './local-game-store';
+import { useGame, useGameView } from './game-store';
+import { useBotDriver } from './use-bot-driver';
 import { soundFor } from './sound-events';
 import { useClockDisplay } from './use-clock-display';
 
 const BAR_HEIGHT = 52;
 
-export function LocalGameScreen() {
+export function GameScreen() {
   const router = useRouter();
   const { width, height } = useWindowDimensions();
-  const { view, outcome } = useLocalGameView();
-  const game = useLocalGame((s) => s.game);
-  const version = useLocalGame((s) => s.version);
-  const orientation = useLocalGame((s) => s.orientation);
-  const clock = useLocalGame((s) => s.clock);
-  const clockConfig = useLocalGame((s) => s.clockConfig);
-  const { makeMove, undo, flip, newGame, resign, agreeDraw, checkFlag } = useLocalGame.getState();
+  const { view, outcome } = useGameView();
+  const game = useGame((s) => s.game);
+  const version = useGame((s) => s.version);
+  const orientation = useGame((s) => s.orientation);
+  const clock = useGame((s) => s.clock);
+  const clockConfig = useGame((s) => s.clockConfig);
+  const { makeMove, undo, flip, startGame, resign, agreeDraw, checkFlag, retryBot } =
+    useGame.getState();
+  const mode = useGame((s) => s.mode);
+  const humanColor = useGame((s) => s.humanColor);
+  const botRating = useGame((s) => s.botRating);
+  const botStatus = useGame((s) => s.botStatus);
+  const botError = useGame((s) => s.botError);
   const settings = useSettings();
   const [reduceMotion, setReduceMotion] = useState(false);
   const [confirm, setConfirm] = useState<'resign' | 'draw' | null>(null);
@@ -41,6 +48,7 @@ export function LocalGameScreen() {
     return () => sub.remove();
   }, []);
 
+  useBotDriver(view.fen, view.turn, outcome.over);
   const times = useClockDisplay(clock, checkFlag);
 
   // Sound: one effect per new move or per externally-decided result.
@@ -77,7 +85,16 @@ export function LocalGameScreen() {
   const pieceTheme = getPieceTheme(settings.pieceThemeId);
   const top = orientation === 'w' ? 'b' : 'w';
   const bottom = orientation;
-  const name = (c: 'w' | 'b') => (c === 'w' ? 'White' : 'Black');
+  const name = (c: 'w' | 'b') =>
+    mode === 'BOT'
+      ? c === humanColor
+        ? 'You'
+        : `Bot ${botRating}`
+      : c === 'w'
+        ? 'White'
+        : 'Black';
+  const sideName = (c: 'w' | 'b') => (c === 'w' ? 'White' : 'Black');
+  const humanTurn = mode !== 'BOT' || view.turn === humanColor;
   const barFor = (c: 'w' | 'b', testID: string) => (
     <PlayerBar
       testID={testID}
@@ -92,7 +109,12 @@ export function LocalGameScreen() {
   );
 
   const startAgain = () => {
-    newGame(clockConfig);
+    startGame({
+      mode,
+      clock: clockConfig,
+      humanColor: mode === 'BOT' ? humanColor : undefined,
+      botRating: botRating ?? undefined,
+    });
     setClosedVersion(null);
   };
 
@@ -107,7 +129,15 @@ export function LocalGameScreen() {
             pieces={view.pieces}
             orientation={orientation}
             turn={view.turn}
-            movableColor={outcome.over ? null : 'both'}
+            movableColor={
+              outcome.over
+                ? null
+                : mode === 'BOT'
+                  ? botStatus === 'thinking' || !humanTurn
+                    ? null
+                    : humanColor
+                  : 'both'
+            }
             boardTheme={getBoardTheme(settings.boardThemeId)}
             pieceTheme={pieceTheme}
             settings={settings}
@@ -129,6 +159,22 @@ export function LocalGameScreen() {
                 : `${outcome.title}${outcome.detail ? ` — ${outcome.detail.toLowerCase()}` : ''}`}
             </Text>
           </View>
+          {mode === 'BOT' && !outcome.over ? (
+            <View style={styles.botRow} testID="bot-status" accessibilityLiveRegion="polite">
+              {botStatus === 'thinking' ? (
+                <Text style={styles.botText}>Bot is thinking…</Text>
+              ) : botStatus === 'error' ? (
+                <>
+                  <Text style={[styles.botText, styles.botError]}>{botError}</Text>
+                  <Button label="Retry" variant="primary" onPress={retryBot} />
+                </>
+              ) : (
+                <Text style={styles.botText}>
+                  Strength {botRating} (target level, not an official rating)
+                </Text>
+              )}
+            </View>
+          ) : null}
           <View style={styles.moves}>
             <MoveList history={view.history} />
           </View>
@@ -136,10 +182,17 @@ export function LocalGameScreen() {
             <Button
               label="Undo"
               onPress={undo}
-              disabled={!!clock || outcome.over || view.history.length === 0}
+              disabled={
+                !!clock ||
+                outcome.over ||
+                view.history.length === 0 ||
+                (mode === 'BOT' && (botStatus === 'thinking' || !humanTurn))
+              }
             />
             <Button label="Flip" onPress={flip} />
-            <Button label="Draw" onPress={() => setConfirm('draw')} disabled={outcome.over} />
+            {mode === 'LOCAL' ? (
+              <Button label="Draw" onPress={() => setConfirm('draw')} disabled={outcome.over} />
+            ) : null}
             <Button
               label="Resign"
               variant="danger"
@@ -159,14 +212,18 @@ export function LocalGameScreen() {
 
       <Sheet visible={confirm !== null} onClose={() => setConfirm(null)} label="Confirm">
         <Text style={styles.confirmTitle}>
-          {confirm === 'resign' ? `${name(view.turn)} resigns?` : 'Agree to a draw?'}
+          {confirm === 'resign'
+            ? mode === 'BOT'
+              ? 'Resign this game?'
+              : `${sideName(view.turn)} resigns?`
+            : 'Agree to a draw?'}
         </Text>
         <View style={styles.controls}>
           <Button
             label={confirm === 'resign' ? 'Resign' : 'Draw'}
             variant="primary"
             onPress={() => {
-              if (confirm === 'resign') resign(view.turn);
+              if (confirm === 'resign') resign(mode === 'BOT' ? humanColor : view.turn);
               else agreeDraw();
               setConfirm(null);
             }}
@@ -207,5 +264,8 @@ const styles = StyleSheet.create({
   },
   controls: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   fen: { color: colors.textFaint, ...typography.caption },
+  botRow: { gap: spacing.sm },
+  botText: { color: colors.textMuted, ...typography.body },
+  botError: { color: colors.danger },
   confirmTitle: { color: colors.text, ...typography.title, textAlign: 'center' },
 });

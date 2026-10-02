@@ -33,3 +33,7 @@ Tests: `pnpm --filter @chess/client test` (unit) and `pnpm --filter @chess/clien
 - Sounds are synthesized by `scripts/generate-sounds.mjs` (original, license-free) and played through `expo-audio`; failures are logged once and never affect play.
 - Web keyboard play: arrow keys move a cursor (shown only on `:focus-visible`), Enter/Space select or move, Escape cancels.
 - Reduced motion (`AccessibilityInfo`) forces instant moves.
+
+## Game model (Phase 4)
+
+One game store (`features/game/game-store.ts`) serves LOCAL and BOT modes (ONLINE joins in Phase 8): same `ChessGame`, clock, result overrides and screen. Mode-specific behaviour (human colour, bot driver, undo semantics, no draws vs bots) lives in the store and `useBotDriver`.

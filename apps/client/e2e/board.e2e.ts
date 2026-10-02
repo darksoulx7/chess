@@ -5,7 +5,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { serveStatic } from './static-server';
 
 const PORT = 8123;
-const URL = `http://localhost:${PORT}/play/local`;
+const URL = `http://localhost:${PORT}/play/game`;
 
 let server: Server;
 let browser: Browser;

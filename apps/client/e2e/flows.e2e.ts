@@ -54,6 +54,7 @@ const status = async () => (await page.locator('[data-testid="status"]').innerTe
 
 async function startLocal(timeControlLabel?: string) {
   await page.goto(BASE);
+  await page.getByRole('button', { name: 'Play', exact: true }).click();
   await page.getByRole('button', { name: 'Play on this device' }).click();
   if (timeControlLabel) await page.getByRole('radio', { name: timeControlLabel }).click();
   await page.getByRole('button', { name: 'Start game' }).click();
@@ -229,7 +230,7 @@ describe('settings', () => {
   it('move confirmation requires a second tap', async () => {
     await page.goto(`${BASE}/settings`);
     await page.getByRole('switch', { name: 'Move confirmation' }).click();
-    await page.goto(`${BASE}/play`);
+    await page.goto(`${BASE}/play/local-setup`);
     await page.getByRole('button', { name: 'Start game' }).click();
     await page.waitForSelector('[data-testid="board"]');
     await click('e2');

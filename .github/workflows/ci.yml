@@ -22,11 +22,13 @@ jobs:
       DATABASE_URL: postgres://chess:chess@127.0.0.1:5432/chess
       REDIS_URL: redis://127.0.0.1:6379
       EXPO_PUBLIC_API_URL: http://localhost:4000
+      STOCKFISH_PATH: /usr/games/stockfish
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends stockfish
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm lint
