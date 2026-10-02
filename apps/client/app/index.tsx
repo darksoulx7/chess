@@ -5,6 +5,7 @@ import { Button } from '../src/components/Button';
 import { Screen } from '../src/components/Screen';
 import { StaticBoard } from '../src/features/chess/StaticBoard';
 import { useAnalysis } from '../src/features/analysis/analysis-store';
+import { useAuth } from '../src/features/auth/auth-store';
 import { getApiUrl } from '../src/services/config';
 import { colors, spacing, typography } from '../src/theme/tokens';
 
@@ -21,6 +22,8 @@ async function fetchReadiness(): Promise<Readiness> {
 
 export default function Home() {
   const router = useRouter();
+  const status = useAuth((s) => s.status);
+  const username = useAuth((s) => s.user?.username);
   const { width } = useWindowDimensions();
   const { data, error, isLoading } = useQuery({
     queryKey: ['ready'],
@@ -47,6 +50,19 @@ export default function Home() {
           }}
         />
         <Button label="Settings" onPress={() => router.push('/settings')} />
+        {status === 'signedIn' ? (
+          <Button
+            label={`Profile · ${username ?? ''}`}
+            onPress={() => router.push('/profile')}
+            testID="profile-button"
+          />
+        ) : status === 'signedOut' ? (
+          <Button
+            label="Sign in"
+            onPress={() => router.push('/auth/login')}
+            testID="signin-button"
+          />
+        ) : null}
       </View>
       <Text style={styles.status} testID="server-status">
         {server}

@@ -3,6 +3,9 @@ import { useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { Button } from '../../components/Button';
 import { colors, radius, spacing, typography } from '../../theme/tokens';
+import { useAccountMutations } from '../account/queries';
+import { useAuth } from '../auth/auth-store';
+import { errorText } from '../../services/error-text';
 import { useAnalysis } from './analysis-store';
 
 export function LoadPanel() {
@@ -12,6 +15,10 @@ export function LoadPanel() {
   const [text, setText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const signedIn = useAuth((s) => s.status === 'signedIn');
+  const { saveGame } = useAccountMutations();
+  const [saveName, setSaveName] = useState('');
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
   // The store replaces `game` on every change, so this re-renders and recomputes with it.
   const pgn = game.getHistory().length > 0 ? game.getPgn({ Event: 'Analysis', Site: 'Chess' }) : '';
@@ -78,6 +85,43 @@ export function LoadPanel() {
         onPress={() => void copy('PGN', pgn)}
         disabled={!pgn}
       />
+      {signedIn && pgn ? (
+        <View style={styles.box}>
+          <Text style={styles.label}>Save to my games</Text>
+          <TextInput
+            accessibilityLabel="Saved game name"
+            placeholder={`Game ${new Date().toLocaleDateString()}`}
+            placeholderTextColor={colors.textFaint}
+            value={saveName}
+            onChangeText={setSaveName}
+            maxLength={100}
+            style={styles.nameInput}
+            testID="save-name"
+          />
+          <Button
+            label={saveGame.isPending ? 'Saving…' : 'Save to my games'}
+            testID="save-to-games"
+            disabled={saveGame.isPending}
+            onPress={() =>
+              saveGame.mutate(
+                { name: saveName.trim() || `Game ${new Date().toLocaleDateString()}`, pgn },
+                {
+                  onSuccess: () => {
+                    setSaveMessage('Saved. Find it under Saved games.');
+                    setSaveName('');
+                  },
+                  onError: (err) => setSaveMessage(errorText(err, 'Could not save this game.')),
+                },
+              )
+            }
+          />
+          {saveMessage ? (
+            <Text style={styles.hint} testID="save-message">
+              {saveMessage}
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
       {copied && copied !== 'FEN' && copied !== 'PGN' ? (
         <Text style={styles.hint}>{copied}</Text>
       ) : null}
@@ -103,6 +147,14 @@ const styles = StyleSheet.create({
     ...typography.body,
   },
   error: { color: colors.danger, ...typography.body },
+  nameInput: {
+    minHeight: 44,
+    backgroundColor: colors.surfaceRaised,
+    color: colors.text,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    ...typography.body,
+  },
   mono: {
     color: colors.text,
     ...typography.caption,

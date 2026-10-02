@@ -2,6 +2,7 @@ import { buildApp } from './app.js';
 import { EnginePool } from './modules/analysis/engine-pool.js';
 import { StockfishProcess } from './modules/analysis/stockfish-process.js';
 import { createDb } from './infrastructure/db.js';
+import { migrate } from './infrastructure/migrate.js';
 import { createRedis } from './infrastructure/redis.js';
 import { loadEnv } from './shared/env.js';
 
@@ -9,6 +10,10 @@ async function main(): Promise<void> {
   const env = loadEnv();
   const db = createDb(env.DATABASE_URL);
   const redis = createRedis(env.REDIS_URL);
+  if (env.MIGRATE_ON_START) {
+    const applied = await migrate(db);
+    if (applied.length > 0) console.warn('applied migrations', applied);
+  }
   const engine = new EnginePool(
     Array.from(
       { length: env.ENGINE_POOL_SIZE },

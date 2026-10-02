@@ -22,6 +22,16 @@ const schema = z.object({
   BOT_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(60),
   ANALYSIS_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(240),
   ANALYSIS_MAX_MS: z.coerce.number().int().min(100).max(30000).default(4000),
+  /** HS256 signing key for access tokens. Must be long and random in production (Render generates it). */
+  JWT_SECRET: z.string().min(32).default('dev-only-insecure-secret-change-me-0123456789'),
+  ACCESS_TOKEN_TTL_SECONDS: z.coerce.number().int().min(30).max(3600).default(900),
+  REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().min(1).max(90).default(30),
+  AUTH_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(30),
+  LOGIN_MAX_FAILURES: z.coerce.number().int().min(1).default(5),
+  MIGRATE_ON_START: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((v) => v === 'true'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
 });
 
@@ -32,6 +42,9 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   if (!parsed.success) {
     const issues = parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ');
     throw new Error(`Invalid environment: ${issues}`);
+  }
+  if (parsed.data.NODE_ENV === 'production' && parsed.data.JWT_SECRET.startsWith('dev-only-')) {
+    throw new Error('Invalid environment: JWT_SECRET must be set to a real secret in production');
   }
   return parsed.data;
 }

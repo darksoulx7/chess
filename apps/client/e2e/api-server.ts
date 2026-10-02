@@ -21,6 +21,10 @@ export async function startApiServer(origins: string[]): Promise<ApiServer> {
       CORS_ORIGINS: origins.join(','),
       STOCKFISH_PATH: process.env.STOCKFISH_PATH ?? '/usr/games/stockfish',
       ENGINE_POOL_SIZE: '2',
+      JWT_SECRET: process.env.JWT_SECRET ?? 'e2e-secret-e2e-secret-e2e-secret-0123456789',
+      // Short-lived access tokens let the e2e suite exercise silent refresh.
+      ACCESS_TOKEN_TTL_SECONDS: process.env.ACCESS_TOKEN_TTL_SECONDS ?? '30',
+      AUTH_RATE_LIMIT_MAX: '1000',
       LOG_LEVEL: 'warn',
     },
     stdio: ['ignore', 'inherit', 'inherit'],

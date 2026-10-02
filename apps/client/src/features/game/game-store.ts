@@ -15,6 +15,7 @@ import {
   type ClockState,
 } from '@chess/game-types';
 import { useMemo } from 'react';
+import { uuidv4 } from '../../services/uuid';
 import { create } from 'zustand';
 import {
   deriveGameView,
@@ -48,6 +49,8 @@ interface GameState {
   humanColor: Color;
   botRating: number | null;
   opening: { id: string; name: string; maxMoves: number } | null;
+  /** Idempotency key for saving this game to the server. */
+  gameId: string;
   /** Salt so each game gets different (but reproducible-per-game) bot randomness. */
   gameSeed: number;
   botStatus: BotStatus;
@@ -81,6 +84,7 @@ export const useGame = create<GameState>((set, get) => ({
   humanColor: 'w',
   botRating: null,
   opening: null,
+  gameId: uuidv4(),
   gameSeed: 0,
   botStatus: 'idle',
   botError: null,
@@ -100,6 +104,7 @@ export const useGame = create<GameState>((set, get) => ({
         humanColor,
         botRating: config.mode === 'BOT' ? (config.botRating ?? 1200) : null,
         opening: config.mode === 'BOT' ? (config.opening ?? null) : null,
+        gameId: uuidv4(),
         gameSeed: Math.floor(Math.random() * 0xffffffff),
         botStatus: 'idle',
         botError: null,

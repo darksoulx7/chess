@@ -17,6 +17,8 @@ import { materialAdvantage, summarizeCaptures } from './captured';
 import { getOpeningIndex, identifyOpening } from '@chess/openings';
 import { useGame, useGameView } from './game-store';
 import { useAnalysis } from '../analysis/analysis-store';
+import { useAuth } from '../auth/auth-store';
+import { useAutoSaveGame } from './use-save-game';
 import { useBotDriver } from './use-bot-driver';
 import { soundFor } from './sound-events';
 import { useClockDisplay } from './use-clock-display';
@@ -52,6 +54,8 @@ export function GameScreen() {
   }, []);
 
   useBotDriver(view.fen, view.turn, outcome.over);
+  const signedIn = useAuth((s) => s.status === 'signedIn');
+  const save = useAutoSaveGame(outcome.over);
   const times = useClockDisplay(clock, checkFlag);
 
   // Sound: one effect per new move or per externally-decided result.
@@ -264,6 +268,13 @@ export function GameScreen() {
         onNewGame={startAgain}
         onClose={() => setClosedVersion(version)}
         onMenu={() => router.dismissTo('/')}
+        save={{
+          signedIn,
+          state: save.state,
+          error: save.error,
+          onRetry: save.retry,
+          onSignIn: () => router.push('/auth/login'),
+        }}
       />
     </Screen>
   );
